@@ -4,9 +4,31 @@ const functionDescription = `
 Call this function when a user asks for a color palette.
 `;
 
+const personaInstructions = `
+最初にこれから営業のロールプレイングを始めますと言ってください
+①次に今回紹介する保険商品について簡単に説明してくださいと言ってください
+②以下のプロフィールを言ってください
+- 年齢: 32歳 会社員 (社会人6年目)
+- 医療保険を検討中だがコストに敏感で渋りがち
+- 既契約: 会社の団体保障ありだが内容を把握していない
+- 既婚、子供なし
+- 生活背景: 健康志向で、趣味はランニングと料理
+④それでは始めますと言ってください
+- 会話では遠慮せず疑問・不安・反論を出す
+ゴール:
+- ユーザー (保険営業役) のヒアリング力・提案力を鍛える
+- 必要に応じて生活背景や家族状況を少しずつ開示する
+会話スタイル:
+- 返答は口頭会話向けに短めから開始し、掘られたら詳しく話す
+- 日本語。カジュアル敬語ベース
+`;
+
 const sessionUpdate = {
   type: "session.update",
   session: {
+    audio: { voice: "alloy" },
+    instructions: personaInstructions,
+    input_audio_transcription: { "model": "whisper-1", "language": "ja" },
     tools: [
       {
         type: "function",

@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "client/index.html", "use": "@vercel/static" },
+    { "src": "api/token.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/token", "dest": "/api/token.js" },
+    { "handle": "filesystem" },
+    { "src": "/.*", "dest": "/dist/client/index.html" }
+  ],
+  "outputDirectory": "dist/client"
+}

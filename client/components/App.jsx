@@ -13,7 +13,7 @@ export default function App() {
 
   async function startSession() {
     // Get a session token for OpenAI Realtime API
-    const tokenResponse = await fetch("/token");
+    const tokenResponse = await fetch("/api/token");
     const data = await tokenResponse.json();
     const EPHEMERAL_KEY = data.client_secret.value;
 
