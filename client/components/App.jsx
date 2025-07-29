@@ -145,36 +145,78 @@ export default function App() {
 
   return (
     <>
-      <nav className="absolute top-0 left-0 right-0 h-16 flex items-center">
-        <div className="flex items-center gap-4 w-full m-4 pb-2 border-0 border-b border-solid border-gray-200">
-          <img style={{ width: "24px" }} src={logo} />
-          <h1>realtime console</h1>
+      <nav className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg">
+        <div className="flex items-center justify-between h-full px-6">
+          <div className="flex items-center gap-3">
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+              </svg>
+            </div>
+            <h1 className="text-xl font-bold text-white">保険営業トレーニングシミュレーター</h1>
+          </div>
+          <div className="text-white/80 text-sm">
+            AIロールプレイで営業スキルを向上
+          </div>
         </div>
       </nav>
-      <main className="absolute top-16 left-0 right-0 bottom-0">
-        <section className="absolute top-0 left-0 right-[380px] bottom-0 flex">
-          <section className="absolute top-0 left-0 right-0 bottom-32 px-4 overflow-y-auto">
-            <EventLog events={events} />
-          </section>
-          <section className="absolute h-32 left-0 right-0 bottom-0 p-4">
-            <SessionControls
-              startSession={startSession}
-              stopSession={stopSession}
-              sendClientEvent={sendClientEvent}
-              sendTextMessage={sendTextMessage}
-              events={events}
-              isSessionActive={isSessionActive}
-            />
-          </section>
-        </section>
-        <section className="absolute top-0 w-[380px] right-0 bottom-0 p-4 pt-0 overflow-y-auto">
-          <ToolPanel
-            sendClientEvent={sendClientEvent}
-            sendTextMessage={sendTextMessage}
-            events={events}
-            isSessionActive={isSessionActive}
-          />
-        </section>
+      <main className="absolute top-16 left-0 right-0 bottom-0 bg-gray-50 overflow-hidden">
+        <div className="h-full flex">
+          {/* 左側 3/5: チャット履歴 */}
+          <div className="flex-[3] flex flex-col p-4 pr-2">
+            <div className="flex-1">
+              <ToolPanel
+                sendClientEvent={sendClientEvent}
+                sendTextMessage={sendTextMessage}
+                events={events}
+                isSessionActive={isSessionActive}
+                mode="chat"
+              />
+            </div>
+            
+            {/* セッションコントロール */}
+            <div className="mt-4">
+              <SessionControls
+                startSession={startSession}
+                stopSession={stopSession}
+                sendClientEvent={sendClientEvent}
+                sendTextMessage={sendTextMessage}
+                events={events}
+                isSessionActive={isSessionActive}
+              />
+            </div>
+          </div>
+
+          {/* 右側 2/5: 設定とイベントログ */}
+          <div className="flex-[2] flex flex-col gap-4 p-4 pl-2 bg-gray-100 border-l border-gray-200">
+            {/* 上部: シミュレーション設定 */}
+            <div className="flex-1 min-h-0">
+              <ToolPanel
+                sendClientEvent={sendClientEvent}
+                sendTextMessage={sendTextMessage}
+                events={events}
+                isSessionActive={isSessionActive}
+                mode="settings"
+              />
+            </div>
+            
+            {/* 下部: イベントログ */}
+            <div className="flex-1 min-h-0 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden flex flex-col">
+              <div className="bg-gradient-to-r from-gray-700 to-gray-800 px-4 py-3 text-sm font-medium text-white flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  <span>システムログ</span>
+                </div>
+                <span className="text-xs opacity-70">{events.length} イベント</span>
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 bg-gray-50">
+                <EventLog events={events} />
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     </>
   );
