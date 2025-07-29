@@ -164,7 +164,7 @@ export default function App() {
         <div className="h-full flex">
           {/* 左側 3/5: チャット履歴 */}
           <div className="flex-[3] flex flex-col p-4 pr-2">
-            <div className="flex-1">
+            <div className="flex-1 min-h-0">
               <ToolPanel
                 sendClientEvent={sendClientEvent}
                 sendTextMessage={sendTextMessage}

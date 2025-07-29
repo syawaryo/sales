@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 export default function ToolPanel({
   isSessionActive,
@@ -11,6 +11,7 @@ export default function ToolPanel({
   const [stage, setStage] = useState('init');
   const [chatHistory, setChatHistory] = useState([]);
   const [processedEventIds, setProcessedEventIds] = useState(new Set());
+  const [processedMessages, setProcessedMessages] = useState(new Set());
 
   // 設定内容
   const [insurancePlan, setInsurancePlan] = useState({
@@ -36,7 +37,7 @@ export default function ToolPanel({
   const generatePersonaInstructions = () => {
     return `
 # ROLE
-あなたは${customerPersona.age}歳の${customerPersona.occupation}（${customerPersona.experience}）として、保険営業のロールプレイの相手をします。
+あなたは${customerPersona.age}歳の${customerPersona.occupation}（${customerPersona.experience}）として、保険営業のを受ける側を演じます。
 
 # プロフィール
 - 年齢: ${customerPersona.age}歳 ${customerPersona.occupation} (${customerPersona.experience})
@@ -51,9 +52,10 @@ export default function ToolPanel({
 - ${customerPersona.concerns}なので、詳しい説明を求める
 - 短い返答から始めて、質問されたら詳しく答える
 - どちらかというと保守的で、内容には反論しがちで慎重な態度を示す
+- 保険については何も知らない
 
 # GOAL
-営業担当者（ユーザー）のニーズ分析と提案スキルの練習を助ける
+営業を受ける会社員として振舞う
 `.trim();
   };
 
@@ -61,21 +63,66 @@ export default function ToolPanel({
   useEffect(() => {
     if (!events || events.length === 0) return;
 
-    const e = events[0];
-
-    // 会話履歴を更新
-    if (e.type === 'response.audio_transcript.done') {
-      const transcript = e.transcript;
-      if (transcript && transcript.trim()) {
+    // すべてのイベントを処理
+    events.forEach(e => {
+    
+    // アシスタントの応答を処理
+    if (e.type === 'response.done' || 
+        e.type === 'response.audio_transcript.done' ||
+        e.type === 'response.output_item.done' ||
+        e.type === 'conversation.item.created') {
+      
+      let transcript = null;
+      let messageId = null;
+      
+      // 各イベントタイプに応じてtranscriptとmessageIdを取得
+      if (e.type === 'response.done') {
+        const output = e.response?.output?.[0];
+        transcript = output?.content?.[0]?.transcript;
+        messageId = output?.id;
+      } else if (e.type === 'response.audio_transcript.done') {
+        transcript = e.transcript;
+        messageId = e.item_id;
+      } else if (e.type === 'response.output_item.done') {
+        transcript = e.item?.content?.[0]?.transcript;
+        messageId = e.item?.id;
+      } else if (e.type === 'conversation.item.created' && e.item?.role === 'assistant') {
+        transcript = e.item?.content?.[0]?.transcript;
+        messageId = e.item?.id;
+      }
+      
+      // メッセージIDまたは内容で重複チェック
+      const messageKey = messageId || transcript;
+      if (transcript && transcript.trim() && messageKey && !processedMessages.has(messageKey)) {
+        console.log('Adding assistant message:', e.type, transcript);
+        setProcessedMessages(prev => new Set([...prev, messageKey]));
         setChatHistory(prev => [...prev, {
           role: 'assistant',
           message: transcript,
           timestamp: new Date()
         }]);
       }
-    } else if (e.type === 'conversation.item.input_audio_transcription.completed') {
-      const transcript = e.transcript;
-      if (transcript && transcript.trim()) {
+    }
+    
+    // ユーザーの入力を処理
+    else if (e.type === 'conversation.item.input_audio_transcription.completed' ||
+             e.type === 'conversation.item.created') {
+      
+      let transcript = null;
+      let messageId = null;
+      
+      if (e.type === 'conversation.item.input_audio_transcription.completed') {
+        transcript = e.transcript;
+        messageId = e.item_id;
+      } else if (e.type === 'conversation.item.created' && e.item?.role === 'user') {
+        transcript = e.item?.content?.[0]?.transcript || e.item?.content?.[0]?.text;
+        messageId = e.item?.id;
+      }
+      
+      const messageKey = messageId || transcript;
+      if (transcript && transcript.trim() && messageKey && !processedMessages.has(messageKey)) {
+        console.log('Adding user message:', e.type, transcript);
+        setProcessedMessages(prev => new Set([...prev, messageKey]));
         setChatHistory(prev => [...prev, {
           role: 'user',
           message: transcript,
@@ -86,31 +133,29 @@ export default function ToolPanel({
 
     // セッション開始時の処理
     if (stage === 'init' && e.type === 'session.created') {
-      // 既に処理したイベントかチェック
       const eventId = e.event_id || JSON.stringify(e);
-      if (processedEventIds.has(eventId)) {
+      if (!processedEventIds.has(eventId)) {
+        setProcessedEventIds(prev => new Set([...prev, eventId]));
+        
+        const sessionUpdate = {
+          type: "session.update",
+          session: {
+            voice: "alloy",
+            instructions: generatePersonaInstructions(),
+            input_audio_transcription: { "model": "whisper-1", "language": "ja" },
+            tools: [],
+            tool_choice: "auto",
+            temperature: 0.6,
+          },
+        };
+        
+        sendClientEvent(sessionUpdate);
+        setStage('waitUser');
+        setFunctionAdded(true);
         return;
       }
-      
-      // イベントIDを処理済みとして記録
-      setProcessedEventIds(prev => new Set([...prev, eventId]));
-      
-      const sessionUpdate = {
-        type: "session.update",
-        session: {
-          voice: "alloy",
-          instructions: generatePersonaInstructions(),
-          input_audio_transcription: { "model": "whisper-1", "language": "ja" },
-          tools: [],
-          tool_choice: "auto",
-        },
-      };
-      
-      sendClientEvent(sessionUpdate);
-      setStage('waitUser');
-      setFunctionAdded(true);
-      return;
     }
+    });
   }, [events, stage, insurancePlan, customerPersona]);
 
   useEffect(() => {
@@ -119,6 +164,7 @@ export default function ToolPanel({
       setStage('init');
       setChatHistory([]);
       setProcessedEventIds(new Set());
+      setProcessedMessages(new Set());
     }
   }, [isSessionActive]);
 
@@ -330,6 +376,15 @@ export default function ToolPanel({
 
   // チャット画面
   if (mode === 'chat') {
+    const chatContainerRef = useRef(null);
+    
+    // 新しいメッセージが追加されたときに自動スクロール
+    useEffect(() => {
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    }, [chatHistory]);
+    
     return (
       <div className="h-full bg-white rounded-2xl shadow-xl flex flex-col border border-gray-100">
         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200 rounded-t-2xl">
@@ -360,7 +415,7 @@ export default function ToolPanel({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 bg-gray-50">
           {!isSessionActive ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-500">
               <div className="bg-white rounded-xl p-8 shadow-lg border border-gray-200 max-w-md text-center">
